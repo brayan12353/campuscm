@@ -13,8 +13,19 @@ export function Settings() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [showLogout, setShowLogout] = useState(false);
-  const [showDelete, setShowDelete] = useState(false);
   const [notifs, setNotifs] = useState({ messages: true, listings: true, jobs: true });
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Impossible de vous déconnecter.',
+        'error',
+      );
+    }
+  };
 
   if (!currentUser) return (
     <div className="max-w-4xl mx-auto px-4 py-20 text-center">
@@ -85,14 +96,13 @@ export function Settings() {
           <LogOut size={18} className="text-gray-600" />
           <span className="text-sm font-medium text-gray-900">Se déconnecter</span>
         </button>
-        <button onClick={() => setShowDelete(true)} className="w-full flex items-center gap-3 py-3 text-left hover:bg-error-50 rounded-xl px-1 transition-colors">
+        <button onClick={() => showToast('La suppression du compte n’est pas encore disponible.', 'info')} className="w-full flex items-center gap-3 py-3 text-left hover:bg-error-50 rounded-xl px-1 transition-colors">
           <Trash2 size={18} className="text-error-600" />
           <span className="text-sm font-medium text-error-600">Supprimer mon compte</span>
         </button>
       </Section>
 
-      <ConfirmDialog open={showLogout} onClose={() => setShowLogout(false)} onConfirm={() => { logout(); navigate('/'); }} title="Se déconnecter" message="Êtes-vous sûr de vouloir vous déconnecter ?" confirmLabel="Déconnecter" />
-      <ConfirmDialog open={showDelete} onClose={() => setShowDelete(false)} onConfirm={() => { logout(); navigate('/'); showToast('Compte supprimé (Démo)', 'success'); }} title="Supprimer le compte" message="Cette action est irréversible en production. En démo, vous serez simplement déconnecté." confirmLabel="Supprimer" danger />
+      <ConfirmDialog open={showLogout} onClose={() => setShowLogout(false)} onConfirm={() => { void handleLogout(); }} title="Se déconnecter" message="Êtes-vous sûr de vouloir vous déconnecter ?" confirmLabel="Déconnecter" />
     </div>
   );
 }

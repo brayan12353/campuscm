@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, Menu, X, MapPin } from 'lucide-react';
+import { Search, Bell, MapPin } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
-import { Badge } from '@/components/ui/Badge';
 import { useApp } from '@/context/AppContext';
 import { APP_CONFIG } from '@/config/app';
 import { cn } from '@/utils/format';

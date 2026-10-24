@@ -22,8 +22,6 @@ export function Dashboard() {
   const myListings = mockListings.filter((l) => l.sellerId === currentUser.id);
 
   const planLabel: Record<string, string> = { free: 'Free', premium: 'Premium', business: 'Business' };
-  const planColor: Record<string, 'default' | 'primary' | 'accent'> = { free: 'default', premium: 'primary', business: 'accent' };
-
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
       {/* Profile header */}

@@ -7,18 +7,27 @@ import type {
   Conversation,
 } from '@/types';
 import {
-  mockUsers,
-  mockListings,
   mockConversations,
   mockNotifications,
 } from '@/data/mock';
 import { generateId } from '@/utils/format';
+import { getSupabaseClient, getSupabaseConfigurationError } from '@/lib/supabase';
+import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 interface AppContextValue {
   currentUser: User | null;
-  login: (email: string) => void;
-  logout: () => void;
-  register: (email: string, fullName: string) => void;
+  authLoading: boolean;
+  authError: string | null;
+  signInWithGoogle: () => Promise<void>;
+  signInWithPassword: (email: string, password: string) => Promise<void>;
+  signUpWithPassword: (
+    email: string,
+    password: string,
+    fullName: string,
+  ) => Promise<boolean>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  updatePassword: (password: string) => Promise<void>;
+  logout: () => Promise<void>;
   favorites: FavoriteItem[];
   toggleFavorite: (targetType: FavoriteItem['targetType'], targetId: string) => void;
   isFavorite: (targetType: FavoriteItem['targetType'], targetId: string) => boolean;
@@ -38,65 +47,181 @@ interface AppContextValue {
 
 const AppContext = createContext<AppContextValue | null>(null);
 
+function mapAuthUser(user: SupabaseUser): User {
+  const metadata = user.user_metadata ?? {};
+  const fullName =
+    (typeof metadata.full_name === 'string' && metadata.full_name) ||
+    (typeof metadata.name === 'string' && metadata.name) ||
+    user.email ||
+    'CampusCM user';
+  const avatarUrl =
+    (typeof metadata.avatar_url === 'string' && metadata.avatar_url) ||
+    (typeof metadata.picture === 'string' && metadata.picture) ||
+    undefined;
+
+  return {
+    id: user.id,
+    email: user.email ?? '',
+    fullName,
+    avatarUrl,
+    city: '',
+    roles: [],
+    verification: 'unverified',
+    studentStatus: false,
+    rating: 0,
+    reviewCount: 0,
+    createdAt: user.created_at ?? '',
+    subscriptionPlan: 'free',
+  };
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [authLoading, setAuthLoading] = useState(!getSupabaseConfigurationError());
+  const [authError, setAuthError] = useState<string | null>(
+    getSupabaseConfigurationError(),
+  );
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>(mockNotifications);
-  const [conversations, setConversations] = useState<Conversation[]>(mockConversations);
+  const [conversations] = useState<Conversation[]>(mockConversations);
   const [userListings, setUserListings] = useState<Listing[]>([]);
   const [selectedCity, setSelectedCity] = useState<string>('Douala');
   const [onboardingCompleted, setOnboardingCompletedState] = useState<boolean>(false);
 
   useEffect(() => {
     try {
+      localStorage.removeItem('campuscm_user');
+    } catch (error) {
+      console.warn('Could not remove the legacy CampusCM demo user.', error);
+    }
+
+    try {
       const savedCity = localStorage.getItem('campuscm_city');
       if (savedCity) setSelectedCity(savedCity);
       const savedOnboarding = localStorage.getItem('campuscm_onboarding');
       if (savedOnboarding === 'done') setOnboardingCompletedState(true);
-      const savedUser = localStorage.getItem('campuscm_user');
-      if (savedUser) setCurrentUser(JSON.parse(savedUser));
       const savedFavs = localStorage.getItem('campuscm_favorites');
       if (savedFavs) setFavorites(JSON.parse(savedFavs));
-    } catch {}
-  }, []);
+    } catch (error) {
+      console.error('Could not restore saved CampusCM preferences.', error);
+    }
 
-  const persistUser = (user: User | null) => {
-    try {
-      if (user) localStorage.setItem('campuscm_user', JSON.stringify(user));
-      else localStorage.removeItem('campuscm_user');
-    } catch {}
-  };
+    const configurationError = getSupabaseConfigurationError();
+    if (configurationError) {
+      setAuthLoading(false);
+      return;
+    }
 
-  const login = useCallback((email: string) => {
-    const user = mockUsers.find((u) => u.email === email) || {
-      ...mockUsers[0],
-      email,
+    let mounted = true;
+    let authEventReceived = false;
+    const supabase = getSupabaseClient();
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      authEventReceived = true;
+      if (!mounted) return;
+      setCurrentUser(session?.user ? mapAuthUser(session.user) : null);
+      setAuthError(null);
+      setAuthLoading(false);
+    });
+
+    void supabase.auth
+      .getSession()
+      .then(({ data, error }) => {
+        if (!mounted || authEventReceived) return;
+        if (error) {
+          setAuthError(error.message);
+          setCurrentUser(null);
+        } else {
+          setCurrentUser(data.session?.user ? mapAuthUser(data.session.user) : null);
+        }
+        setAuthLoading(false);
+      })
+      .catch((error: unknown) => {
+        if (!mounted || authEventReceived) return;
+        const message =
+          error instanceof Error
+            ? error.message
+            : 'Could not restore your Supabase session.';
+        console.error('Could not restore the CampusCM authentication session.', error);
+        setAuthError(message);
+        setCurrentUser(null);
+        setAuthLoading(false);
+      });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
     };
-    setCurrentUser(user);
-    persistUser(user);
   }, []);
 
-  const register = useCallback((email: string, fullName: string) => {
-    const user: User = {
-      id: generateId(),
-      email,
-      fullName,
-      city: 'Douala',
-      roles: ['student'],
-      verification: 'unverified',
-      studentStatus: true,
-      rating: 0,
-      reviewCount: 0,
-      createdAt: new Date().toISOString(),
-      subscriptionPlan: 'free',
-    };
-    setCurrentUser(user);
-    persistUser(user);
+  const signInWithGoogle = useCallback(async () => {
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: new URL('/login', window.location.origin).toString(),
+      },
+    });
+    if (error) throw error;
   }, []);
 
-  const logout = useCallback(() => {
+  const signInWithPassword = useCallback(
+    async (email: string, password: string) => {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      if (error) throw error;
+      setCurrentUser(data.user ? mapAuthUser(data.user) : null);
+      setAuthError(null);
+    },
+    [],
+  );
+
+  const signUpWithPassword = useCallback(
+    async (email: string, password: string, fullName: string) => {
+      const supabase = getSupabaseClient();
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name: fullName },
+          emailRedirectTo: new URL('/login', window.location.origin).toString(),
+        },
+      });
+      if (error) throw error;
+      if (data.session?.user) {
+        setCurrentUser(mapAuthUser(data.session.user));
+        setAuthError(null);
+      }
+      return !data.session;
+    },
+    [],
+  );
+
+  const requestPasswordReset = useCallback(async (email: string) => {
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: new URL('/forgot-password?recovery=1', window.location.origin).toString(),
+    });
+    if (error) throw error;
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase.auth.updateUser({ password });
+    if (error) throw error;
+    if (data.user) setCurrentUser(mapAuthUser(data.user));
+  }, []);
+
+  const logout = useCallback(async () => {
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.auth.signOut();
+    if (error) throw error;
     setCurrentUser(null);
-    persistUser(null);
+    setAuthError(null);
   }, []);
 
   const toggleFavorite = useCallback(
@@ -109,7 +234,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         } else {
           next = [...prev, { id: generateId(), userId: 'me', targetType, targetId, createdAt: new Date().toISOString() }];
         }
-        try { localStorage.setItem('campuscm_favorites', JSON.stringify(next)); } catch {}
+        try {
+          localStorage.setItem('campuscm_favorites', JSON.stringify(next));
+        } catch (error) {
+          console.error('Could not persist CampusCM favorites.', error);
+        }
         return next;
       });
     },
@@ -144,19 +273,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const setOnboardingCompleted = useCallback((done: boolean) => {
     setOnboardingCompletedState(done);
-    try { localStorage.setItem('campuscm_onboarding', 'done'); } catch {}
+    try {
+      localStorage.setItem('campuscm_onboarding', 'done');
+    } catch (error) {
+      console.error('Could not persist the CampusCM onboarding status.', error);
+    }
   }, []);
 
   const setSelectedCityPersist = useCallback((city: string) => {
     setSelectedCity(city);
-    try { localStorage.setItem('campuscm_city', city); } catch {}
+    try {
+      localStorage.setItem('campuscm_city', city);
+    } catch (error) {
+      console.error('Could not persist the selected CampusCM city.', error);
+    }
   }, []);
 
   const value: AppContextValue = {
     currentUser,
-    login,
+    authLoading,
+    authError,
+    signInWithGoogle,
+    signInWithPassword,
+    signUpWithPassword,
+    requestPasswordReset,
+    updatePassword,
     logout,
-    register,
     favorites,
     toggleFavorite,
     isFavorite,

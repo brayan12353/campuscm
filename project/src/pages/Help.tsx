@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, HelpCircle, Mail, MessageCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, HelpCircle, Mail } from 'lucide-react';
 import { APP_CONFIG } from '@/config/app';
-import { cn } from '@/utils/format';
 
 const faqs = [
   { q: 'Comment créer une annonce ?', a: "Cliquez sur le bouton '+' en bas de l'écran ou sur 'Créer une annonce'. Suivez les étapes : catégorie, photos, informations, prix, puis publiez." },

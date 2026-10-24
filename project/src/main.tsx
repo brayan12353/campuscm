@@ -8,7 +8,9 @@ if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register('/sw.js')
-      .catch(() => {/* SW registration is optional */});
+      .catch((error) => {
+        console.warn('CampusCM service worker registration failed.', error);
+      });
   });
 }
 

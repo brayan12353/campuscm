@@ -18,7 +18,8 @@ export function Subscription() {
   const [selectedBoost, setSelectedBoost] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPayModal, setShowPayModal] = useState(false);
-  const [payStep, setPayStep] = useState<'select' | 'processing' | 'done'>('select');
+  const [payStep, setPayStep] = useState<'select' | 'processing' | 'done' | 'failed'>('select');
+  const [paymentError, setPaymentError] = useState('');
 
   const handleSelectPlan = (planId: string) => {
     setSelectedPlan(planId);
@@ -35,18 +36,45 @@ export function Subscription() {
   };
 
   const handlePay = async () => {
+    if (loading) return;
+
     const plan = subscriptionPlans.find((p) => p.id === selectedPlan);
     const boost = boostOptions.find((b) => b.id === selectedBoost);
     const amount = plan ? plan.price : boost ? boost.price : 0;
     if (amount === 0) {
-      showToast('Plan Free activé !', 'success');
+      showToast('Le plan gratuit ne nécessite aucun paiement.', 'info');
       setShowPayModal(false);
       return;
     }
+
+    setLoading(true);
+    setPaymentError('');
     setPayStep('processing');
-    const result = await PaymentService.createPayment({ userId: currentUser?.id || 'demo', amount, type: selectedPlan ? 'subscription' : 'boost' });
-    setPayStep('done');
-    if (result.success) showToast(`Paiement simulé — ${result.payment?.reference}`, 'success');
+    try {
+      const result = await PaymentService.createPayment({
+        userId: currentUser?.id || 'demo',
+        amount,
+        type: selectedPlan ? 'subscription' : 'boost',
+      });
+
+      if (!result.success) {
+        setPaymentError(result.message);
+        setPayStep('failed');
+        showToast(result.message, 'error');
+        return;
+      }
+
+      setPayStep('done');
+      showToast(result.message, result.demoMode ? 'info' : 'success');
+    } catch (error) {
+      console.error('Could not process CampusCM payment.', error);
+      const message = 'Le paiement est temporairement indisponible. Veuillez réessayer.';
+      setPaymentError(message);
+      setPayStep('failed');
+      showToast(message, 'error');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const selectedItem = subscriptionPlans.find((p) => p.id === selectedPlan) || boostOptions.find((b) => b.id === selectedBoost);
@@ -123,8 +151,8 @@ export function Subscription() {
               <p className="text-xs text-warning-800 font-semibold text-center">Mode DÉMO — Aucun paiement réel</p>
               <p className="text-xs text-warning-700 text-center mt-0.5">Référence simulée uniquement</p>
             </div>
-            <Button fullWidth size="lg" onClick={handlePay}>Simuler le paiement</Button>
-            <Button variant="ghost" fullWidth onClick={() => setShowPayModal(false)}>Annuler</Button>
+            <Button fullWidth size="lg" onClick={handlePay} disabled={loading}>Simuler le paiement</Button>
+            <Button variant="ghost" fullWidth onClick={() => setShowPayModal(false)} disabled={loading}>Annuler</Button>
           </div>
         )}
         {payStep === 'processing' && (
@@ -142,6 +170,16 @@ export function Subscription() {
             <p className="text-sm text-gray-500 mb-1">Transaction de démonstration enregistrée.</p>
             <p className="text-xs text-gray-400 mb-6">Aucun montant réel n'a été débité.</p>
             <Button fullWidth onClick={() => setShowPayModal(false)}>Fermer</Button>
+          </div>
+        )}
+        {payStep === 'failed' && (
+          <div className="text-center py-4">
+            <div className="w-16 h-16 rounded-full bg-error-100 flex items-center justify-center mx-auto mb-4">
+              <AlertCircle size={28} className="text-error-600" />
+            </div>
+            <h3 className="font-bold text-gray-900 mb-2">Paiement indisponible</h3>
+            <p className="text-sm text-gray-500 mb-6">{paymentError}</p>
+            <Button fullWidth onClick={() => setPayStep('select')}>Réessayer</Button>
           </div>
         )}
       </Modal>

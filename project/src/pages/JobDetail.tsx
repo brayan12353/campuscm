@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Clock, Briefcase, Calendar, Flag, Heart, Share2, ChevronLeft, Phone, MessageCircle } from 'lucide-react';
+import { MapPin, Clock, Briefcase, Calendar, Heart, Share2, ChevronLeft, Phone, MessageCircle } from 'lucide-react';
 import { mockJobs } from '@/data/mock';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
@@ -52,7 +52,14 @@ export function JobDetail() {
             <button onClick={() => toggleFavorite('job', job.id)} className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200">
               <Heart size={18} className={cn(fav ? 'fill-error-500 text-error-500' : 'text-gray-600')} />
             </button>
-            <button onClick={async () => { try { await navigator.clipboard.writeText(window.location.href); showToast('Lien copié', 'success'); } catch {} }} className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200">
+            <button onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(window.location.href);
+                showToast('Lien copié', 'success');
+              } catch {
+                showToast('Impossible de copier le lien.', 'error');
+              }
+            }} className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200">
               <Share2 size={18} className="text-gray-600" />
             </button>
           </div>

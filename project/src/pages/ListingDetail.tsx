@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import {
   Heart, Share2, Flag, MapPin, Calendar, Eye, ChevronLeft, ChevronRight,
   MessageCircle, Phone, ShieldAlert, ChevronLeft as Back,
@@ -9,10 +9,9 @@ import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { VerifiedBadge } from '@/components/ui/VerifiedBadge';
 import { Modal } from '@/components/ui/Modal';
-import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { useApp } from '@/context/AppContext';
 import { useToast } from '@/components/ui/Toast';
-import { formatPrice, formatDate, timeAgo, buildWhatsAppUrl } from '@/utils/format';
+import { formatPrice, timeAgo, buildWhatsAppUrl } from '@/utils/format';
 import { cn } from '@/utils/format';
 
 const reportCategories = ['Scam', 'Fake listing', 'Wrong price', 'Inappropriate content', 'Harassment', 'Other'];
@@ -49,9 +48,19 @@ export function ListingDetail() {
 
   const handleShare = async () => {
     if (navigator.share) {
-      try { await navigator.share({ title: listing.title, url: window.location.href }); } catch {}
+      try {
+        await navigator.share({ title: listing.title, url: window.location.href });
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return;
+        showToast('Impossible de partager le lien.', 'error');
+      }
     } else {
-      try { await navigator.clipboard.writeText(window.location.href); showToast('Lien copié', 'success'); } catch {}
+      try {
+        await navigator.clipboard.writeText(window.location.href);
+        showToast('Lien copié', 'success');
+      } catch {
+        showToast('Impossible de copier le lien.', 'error');
+      }
     }
   };
 

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   Home, ShoppingBag, Briefcase, GraduationCap, Building2, Wrench,
@@ -6,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Logo } from '@/components/ui/Logo';
 import { useApp } from '@/context/AppContext';
+import { useToast } from '@/components/ui/Toast';
 import { cn } from '@/utils/format';
 
 const mainLinks = [
@@ -32,8 +34,26 @@ const accountLinks = [
 export function Sidebar() {
   const { currentUser, logout, conversations } = useApp();
   const navigate = useNavigate();
+  const { showToast } = useToast();
+  const [loggingOut, setLoggingOut] = useState(false);
   const unreadCount = conversations.reduce((sum, c) => sum + c.unread, 0);
   const isAdmin = currentUser?.roles.includes('admin');
+
+  const handleLogout = async () => {
+    if (loggingOut) return;
+    setLoggingOut(true);
+    try {
+      await logout();
+      navigate('/');
+    } catch (error) {
+      showToast(
+        error instanceof Error ? error.message : 'Impossible de vous déconnecter.',
+        'error',
+      );
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-gray-100 h-screen sticky top-0">
@@ -69,10 +89,11 @@ export function Sidebar() {
         </button>
         {currentUser ? (
           <button
-            onClick={() => { logout(); navigate('/'); }}
+            onClick={handleLogout}
+            disabled={loggingOut}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-gray-600 hover:bg-gray-100 transition-colors"
           >
-            <LogOut size={18} /> Déconnexion
+            <LogOut size={18} /> {loggingOut ? 'Déconnexion...' : 'Déconnexion'}
           </button>
         ) : (
           <button

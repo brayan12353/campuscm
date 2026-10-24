@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { SlidersHorizontal, Search, X } from 'lucide-react';
+import { SlidersHorizontal, Search } from 'lucide-react';
 import { mockListings } from '@/data/mock';
 import { ListingCard } from '@/components/cards/ListingCard';
 import { Button } from '@/components/ui/Button';

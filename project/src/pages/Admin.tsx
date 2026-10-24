@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { Users, ShoppingBag, Briefcase, Building2, Flag, TrendingUp, Eye, CheckCircle, XCircle, AlertTriangle, Ban, BadgeCheck, Shield } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { Button } from '@/components/ui/Button';

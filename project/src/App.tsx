@@ -1,7 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { AppProvider } from '@/context/AppContext';
+import { AppProvider, useApp } from '@/context/AppContext';
 import { ToastProvider } from '@/components/ui/Toast';
 import { AppLayout } from '@/components/layout/AppLayout';
+import { RequireAuth } from '@/components/auth/RequireAuth';
 
 // Pages
 import { Home } from '@/pages/Home';
@@ -49,52 +50,68 @@ export default function App() {
     <BrowserRouter>
       <AppProvider>
         <ToastProvider>
-          <Routes>
-            {/* Auth routes — no layout */}
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route path="/forgot-password" element={<ForgotPassword />} />
-
-            {/* App routes — with layout */}
-            <Route element={<AppLayout />}>
-              <Route path="/" element={<Home />} />
-              <Route path="/explore" element={<Explore />} />
-              <Route path="/marketplace" element={<Marketplace />} />
-              <Route path="/marketplace/:id" element={<ListingDetail />} />
-              <Route path="/create-listing" element={<CreateListing />} />
-              <Route path="/jobs" element={<Jobs />} />
-              <Route path="/jobs/:id" element={<JobDetail />} />
-              <Route path="/tutors" element={<Tutors />} />
-              <Route path="/tutors/:id" element={<TutorDetail />} />
-              <Route path="/housing" element={<Housing />} />
-              <Route path="/housing/:id" element={<HousingDetail />} />
-              <Route path="/services" element={<Services />} />
-              <Route path="/services/:id" element={<ServiceDetail />} />
-              <Route path="/events" element={<Events />} />
-              <Route path="/events/:id" element={<EventDetail />} />
-              <Route path="/about" element={<About />} />
-              <Route path="/help" element={<Help />} />
-              <Route path="/terms" element={<Terms />} />
-              <Route path="/privacy" element={<Privacy />} />
-
-              {/* User */}
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/favorites" element={<Favorites />} />
-              <Route path="/my-listings" element={<MyListings />} />
-              <Route path="/messages" element={<Messages />} />
-              <Route path="/subscription" element={<Subscription />} />
-
-              {/* Admin */}
-              <Route path="/admin" element={<Admin />} />
-
-              {/* 404 */}
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
+          <AppRoutes />
         </ToastProvider>
       </AppProvider>
     </BrowserRouter>
+  );
+}
+
+function AppRoutes() {
+  const { authLoading } = useApp();
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm text-gray-500">
+        Vérification de votre session...
+      </div>
+    );
+  }
+
+  return (
+    <Routes>
+      {/* Auth routes — no layout */}
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+
+      {/* App routes — with layout */}
+      <Route element={<AppLayout />}>
+        <Route path="/" element={<Home />} />
+        <Route path="/explore" element={<Explore />} />
+        <Route path="/marketplace" element={<Marketplace />} />
+        <Route path="/marketplace/:id" element={<ListingDetail />} />
+        <Route path="/create-listing" element={<RequireAuth><CreateListing /></RequireAuth>} />
+        <Route path="/jobs" element={<Jobs />} />
+        <Route path="/jobs/:id" element={<JobDetail />} />
+        <Route path="/tutors" element={<Tutors />} />
+        <Route path="/tutors/:id" element={<TutorDetail />} />
+        <Route path="/housing" element={<Housing />} />
+        <Route path="/housing/:id" element={<HousingDetail />} />
+        <Route path="/services" element={<Services />} />
+        <Route path="/services/:id" element={<ServiceDetail />} />
+        <Route path="/events" element={<Events />} />
+        <Route path="/events/:id" element={<EventDetail />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/help" element={<Help />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
+
+        {/* User */}
+        <Route path="/dashboard" element={<RequireAuth><Dashboard /></RequireAuth>} />
+        <Route path="/profile" element={<RequireAuth><Profile /></RequireAuth>} />
+        <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
+        <Route path="/favorites" element={<RequireAuth><Favorites /></RequireAuth>} />
+        <Route path="/my-listings" element={<RequireAuth><MyListings /></RequireAuth>} />
+        <Route path="/messages" element={<RequireAuth><Messages /></RequireAuth>} />
+        <Route path="/subscription" element={<RequireAuth><Subscription /></RequireAuth>} />
+
+        {/* Admin */}
+        <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
+
+        {/* 404 */}
+        <Route path="*" element={<NotFound />} />
+      </Route>
+    </Routes>
   );
 }

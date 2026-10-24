@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, ShoppingBag, Briefcase, GraduationCap, Building2, Wrench, CalendarDays, ShieldCheck, MapPin, Zap, Users, Heart } from 'lucide-react';
+import { Search, ShoppingBag, Briefcase, GraduationCap, Building2, Wrench, CalendarDays, ShieldCheck, MapPin, Zap, Users } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { mockListings, mockJobs, mockHousing, mockTutors, mockEvents } from '@/data/mock';
@@ -9,7 +9,6 @@ import { HousingCard } from '@/components/cards/HousingCard';
 import { TutorCard } from '@/components/cards/TutorCard';
 import { EventCard } from '@/components/cards/EventCard';
 import { Button } from '@/components/ui/Button';
-import { APP_CONFIG } from '@/config/app';
 
 const categories = [
   { to: '/marketplace', label: 'Marketplace', icon: ShoppingBag, color: 'bg-primary-50 text-primary-600' },

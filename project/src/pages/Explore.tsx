@@ -6,7 +6,6 @@ import { ListingCard } from '@/components/cards/ListingCard';
 import { JobCard } from '@/components/cards/JobCard';
 import { TutorCard } from '@/components/cards/TutorCard';
 import { HousingCard } from '@/components/cards/HousingCard';
-import { ServiceCard } from '@/components/cards/ServiceCard';
 import { EventCard } from '@/components/cards/EventCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { normalizeAccents } from '@/utils/format';
@@ -33,7 +32,24 @@ export function Explore() {
   const [activeQuery, setActiveQuery] = useState(initialQuery);
   const [activeCategory, setActiveCategory] = useState('all');
   const [recentSearches, setRecentSearches] = useState<string[]>(() => {
-    try { return JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch { return []; }
+    try {
+      const storedSearches = localStorage.getItem(RECENT_KEY);
+      if (!storedSearches) return [];
+
+      const parsedSearches: unknown = JSON.parse(storedSearches);
+      if (
+        Array.isArray(parsedSearches) &&
+        parsedSearches.every((search): search is string => typeof search === 'string')
+      ) {
+        return parsedSearches;
+      }
+
+      console.warn('Saved CampusCM search history has an invalid format.');
+      return [];
+    } catch (error) {
+      console.error('Could not restore CampusCM search history.', error);
+      return [];
+    }
   });
 
   const normalize = (s: string) => normalizeAccents(s);
@@ -42,7 +58,11 @@ export function Explore() {
     if (!term.trim()) return;
     setRecentSearches((prev) => {
       const next = [term, ...prev.filter((r) => r !== term)].slice(0, MAX_RECENT);
-      try { localStorage.setItem(RECENT_KEY, JSON.stringify(next)); } catch {}
+      try {
+        localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+      } catch (error) {
+        console.error('Could not persist CampusCM search history.', error);
+      }
       return next;
     });
   };
@@ -56,7 +76,11 @@ export function Explore() {
 
   const clearRecent = () => {
     setRecentSearches([]);
-    try { localStorage.removeItem(RECENT_KEY); } catch {}
+    try {
+      localStorage.removeItem(RECENT_KEY);
+    } catch (error) {
+      console.error('Could not clear CampusCM search history.', error);
+    }
   };
 
   useEffect(() => {

@@ -2,6 +2,8 @@ import { APP_CONFIG } from '@/config/app';
 import type { Payment } from '@/types';
 import { generateId } from '@/utils/format';
 
+const demoPayments = new Map<string, Payment>();
+
 export interface PaymentRequest {
   userId: string;
   amount: number;
@@ -29,6 +31,7 @@ export const PaymentService = {
         createdAt: new Date().toISOString(),
         reference: `DEMO-${req.type.toUpperCase()}-${generateId().slice(0, 6)}`,
       };
+      demoPayments.set(payment.id, payment);
       return {
         success: true,
         payment,
@@ -44,10 +47,14 @@ export const PaymentService = {
   },
 
   async checkPaymentStatus(paymentId: string): Promise<'pending' | 'completed' | 'failed'> {
-    return 'completed';
+    return demoPayments.get(paymentId)?.status ?? 'failed';
   },
 
-  async cancelPayment(_paymentId: string): Promise<boolean> {
+  async cancelPayment(paymentId: string): Promise<boolean> {
+    const payment = demoPayments.get(paymentId);
+    if (!payment || payment.status !== 'pending') return false;
+
+    demoPayments.set(paymentId, { ...payment, status: 'failed' });
     return true;
   },
 };

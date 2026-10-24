@@ -48,7 +48,14 @@ export function EventDetail() {
             <button onClick={() => toggleFavorite('event', event.id)} className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center shadow-sm">
               <Heart size={18} className={cn(fav ? 'fill-error-500 text-error-500' : 'text-gray-600')} />
             </button>
-            <button onClick={async () => { try { await navigator.clipboard.writeText(window.location.href); showToast('Lien copié', 'success'); } catch {} }} className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center shadow-sm">
+            <button onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(window.location.href);
+                showToast('Lien copié', 'success');
+              } catch {
+                showToast('Impossible de copier le lien.', 'error');
+              }
+            }} className="w-9 h-9 rounded-full bg-white/90 flex items-center justify-center shadow-sm">
               <Share2 size={18} className="text-gray-600" />
             </button>
           </div>
